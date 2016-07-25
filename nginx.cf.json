@@ -24,8 +24,7 @@
         "CustomCookbooksSource": {
           "Type": "git",
           "Url": "https://github.com/edwardbartholomew/nginx-demo.git"
-        },
-        "UseOpsworksSecurityGroups": true
+        }
       }
     },
     "NginxLayer": {
@@ -42,7 +41,12 @@
         "AutoAssignPublicIps": "true",
         "CustomRecipes": {
           "Deploy": ["nginx-demo::default"]
-        }
+        },
+        "CustomSecurityGroupIds": [{
+          "Fn::GetAtt": ["WebSecurityGroup",
+            "GroupId"
+          ]
+        }]
       }
     },
     "NginxInstance": {
@@ -58,6 +62,19 @@
         "RootDeviceType": "ebs"
       }
     },
+    "WebSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "Allow http to client host",
+        "SecurityGroupIngress": [{
+          "IpProtocol": "tcp",
+          "FromPort": "80",
+          "ToPort": "80",
+          "CidrIp": "0.0.0.0/0"
+        }]
+      }
+    },
+
     "OpsWorksServiceRole": {
       "Type": "AWS::IAM::Role",
       "Properties": {
