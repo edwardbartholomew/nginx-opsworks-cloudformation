@@ -1,0 +1,132 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "AWS CloudFormation template creating an OpsWorks Stack that will build an nginx server.",
+  "Parameters": {},
+  "Resources": {
+    "NginxStack": {
+      "Type": "AWS::OpsWorks::Stack",
+      "Properties": {
+        "Name": {
+          "Ref": "AWS::StackName"
+        },
+        "DefaultOs": "Amazon Linux 2016.03",
+        "ConfigurationManager": {
+          "Name": "Chef",
+          "Version": "12"
+        },
+        "ServiceRoleArn": {
+          "Fn::GetAtt": ["OpsWorksServiceRole", "Arn"]
+        },
+        "DefaultInstanceProfileArn": {
+          "Fn::GetAtt": ["OpsWorksInstanceProfile", "Arn"]
+        },
+        "UseCustomCookbooks": true,
+        "CustomCookbooksSource": {
+          "Type": "git",
+          "Url": "https://github.com/edwardbartholomew/nginx-demo.git"
+        },
+        "UseOpsworksSecurityGroups": true
+      }
+    },
+    "NginxLayer": {
+      "Type": "AWS::OpsWorks::Layer",
+      "Properties": {
+        "StackId": {
+          "Ref": "NginxStack"
+        },
+        "Name": "nginx-demo",
+        "Type": "custom",
+        "Shortname": "nginx-demo",
+        "EnableAutoHealing": "true",
+        "AutoAssignElasticIps": "false",
+        "AutoAssignPublicIps": "true",
+        "CustomRecipes": {
+          "Deploy": ["nginx-demo::default"]
+        }
+      }
+    },
+    "NginxInstance": {
+      "Type": "AWS::OpsWorks::Instance",
+      "Properties": {
+        "StackId": {
+          "Ref": "NginxStack"
+        },
+        "LayerIds": [{
+          "Ref": "NginxLayer"
+        }],
+        "InstanceType": "t2.micro",
+        "RootDeviceType": "ebs"
+      }
+    },
+    "OpsWorksServiceRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [{
+            "Effect": "Allow",
+            "Principal": {
+              "Service": [
+                "opsworks.amazonaws.com"
+              ]
+            },
+            "Action": [
+              "sts:AssumeRole"
+            ]
+          }]
+        },
+        "Path": "/",
+        "Policies": [{
+          "PolicyName": "opsworks-service",
+          "PolicyDocument": {
+            "Statement": [{
+              "Effect": "Allow",
+              "Action": [
+                "ec2:*",
+                "iam:PassRole",
+                "cloudwatch:GetMetricStatistics",
+                "elasticloadbalancing:*"
+              ],
+              "Resource": "*"
+            }]
+          }
+        }]
+      }
+    },
+    "OpsWorksInstanceRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [{
+            "Effect": "Allow",
+            "Principal": {
+              "Service": [
+                "ec2.amazonaws.com"
+              ]
+            },
+            "Action": [
+              "sts:AssumeRole"
+            ]
+          }]
+        },
+        "Path": "/"
+      }
+    },
+
+    "OpsWorksInstanceProfile": {
+      "Type": "AWS::IAM::InstanceProfile",
+      "Properties": {
+        "Path": "/",
+        "Roles": [{
+          "Ref": "OpsWorksInstanceRole"
+        }]
+      }
+    }
+  },
+  "Outputs": {
+    "StackId": {
+      "Value": {
+        "Ref": "NginxStack"
+      }
+    }
+  }
+}
